@@ -15,9 +15,15 @@ const locationDropdown = document.getElementById('location-dropdown');
 const closeLocationBtn = document.getElementById('close-location');
 const mapSearch = document.getElementById('map-search');
 const mapSurface = document.getElementById('map-surface');
-const mapPin = document.getElementById('map-pin');
 const mapLabel = document.getElementById('map-label');
 const applyLocationBtn = document.getElementById('apply-location');
+
+let spotlightResizeBound = false;
+let deliveryMap = null;
+let deliveryMarker = null;
+let deliveryMapReady = false;
+const DEFAULT_MAP_CENTER = [37.9838, 23.7275];
+const DEFAULT_MAP_ZOOM = 13;
 
 const state = {
   restaurants: [],
@@ -32,37 +38,103 @@ const SPOTLIGHT_SLIDES = [
     title: 'Pizza Place',
     tag: 'Pizza',
     subtitle: 'Classic slices & wood-fired pies',
-    image: 'https://picsum.photos/seed/pizzaspot/900/520',
+    image: 'https://foodish-api.com/images/pizza/pizza1.jpg',
     href: 'index.html?page=restaurant&id=1'
   },
   {
     title: 'Burger House',
     tag: 'Burgers',
     subtitle: 'Smash burgers & loaded fries',
-    image: 'https://picsum.photos/seed/burgerspot/900/520',
+    image: 'https://foodish-api.com/images/burger/burger1.jpg',
     href: 'index.html?page=restaurant&id=2'
   },
   {
     title: 'Smoothie Bar',
     tag: 'Smoothies',
     subtitle: 'Fresh blends & fruit bowls',
-    image: 'https://picsum.photos/seed/smoothiespot/900/520',
+    image: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=900&h=520&q=80',
     href: 'index.html?page=restaurant&id=3'
   }
 ];
 
-fetch('data.json')
-  .then((res) => res.json())
-  .then((data) => {
-    state.restaurants = data;
-    render();
-  })
-  .catch((err) => {
-    app.innerHTML = '<p class="empty-state">Unable to load restaurants right now.</p>';
-    console.error(err);
-  });
+const FOOD_IMAGE_RULES = [
+  { keywords: ['pizza', 'margherita', 'pepperoni', 'garlic bread'], image: 'https://foodish-api.com/images/pizza/pizza1.jpg' },
+  { keywords: ['burger'], image: 'https://foodish-api.com/images/burger/burger1.jpg' },
+  { keywords: ['fries', 'fry'], image: 'https://foodish-api.com/images/burger/burger2.jpg' },
+  { keywords: ['milkshake', 'shake', 'dessert'], image: 'https://foodish-api.com/images/dessert/dessert1.jpg' },
+  { keywords: ['smoothie', 'berry'], image: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=600&h=400&q=80' },
+  { keywords: ['salad', 'bowl', 'avocado', 'power'], image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80' },
+  { keywords: ['healthy', 'green'], image: 'https://foodish-api.com/images/rice/rice1.jpg' }
+];
+
+function getFoodImage(source = {}, fallbackImage = '') {
+  if (source.image) {
+    return source.image;
+  }
+
+  const text = `${source.name || ''} ${source.description || ''} ${source.category || ''}`.toLowerCase();
+  const match = FOOD_IMAGE_RULES.find((rule) => rule.keywords.some((keyword) => text.includes(keyword)));
+
+  return match?.image || fallbackImage || FOOD_IMAGE_RULES[0].image;
+}
+
+function foodImageTag(source, label, className = '') {
+  const image = getFoodImage(source, source.image);
+  const classAttr = className ? ` class="${className}"` : '';
+  return `<img src="${image}" alt="${label}" loading="lazy"${classAttr} onerror="this.onerror=null;this.src='${FOOD_IMAGE_RULES[0].image}';" />`;
+}
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function loadRestaurants() {
+  return fetch('data.json')
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`Failed to load restaurants (${res.status})`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      if (!Array.isArray(data) || !data.length) {
+        throw new Error('Restaurant data is empty');
+      }
+      state.restaurants = data;
+      hydrateCartImages();
+      render();
+    })
+    .catch((err) => {
+      app.innerHTML = '<p class="empty-state">Unable to load restaurants right now. If you opened this file directly, run it through a local server.</p>';
+      console.error(err);
+    });
+}
+
+loadRestaurants();
 
 app.addEventListener('click', (event) => {
+  const prev = event.target.closest('.spotlight-prev');
+  const next = event.target.closest('.spotlight-next');
+  if (prev || next) {
+    const viewport = document.getElementById('spotlight-viewport');
+    const track = document.getElementById('spotlight-track');
+    if (!viewport || !track) {
+      return;
+    }
+
+    const slide = track.querySelector('.spotlight-slide');
+    const styles = getComputedStyle(track);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 14;
+    const step = slide ? slide.offsetWidth + gap : 300;
+    viewport.scrollBy({ left: (prev ? -step : step), behavior: 'smooth' });
+    return;
+  }
+
   const addButton = event.target.closest('[data-add-item]');
   if (addButton) {
     addToCart(addButton.dataset.addItem);
@@ -71,7 +143,11 @@ app.addEventListener('click', (event) => {
 
   const qtyButton = event.target.closest('[data-qty]');
   if (qtyButton) {
-    updateQty(qtyButton.dataset.qty, Number(qtyButton.dataset.delta));
+    updateQty(
+      qtyButton.dataset.qty,
+      Number(qtyButton.dataset.delta),
+      qtyButton.dataset.restaurant
+    );
   }
 });
 
@@ -153,6 +229,16 @@ function loadCart() {
   }
 }
 
+function hydrateCartImages() {
+  state.cart = state.cart.map((item) => ({
+    ...item,
+    image: item.image || getFoodImage(item)
+  }));
+  if (state.cart.length) {
+    saveCart();
+  }
+}
+
 function loadLoginState() {
   return localStorage.getItem('wolt-login') === 'true';
 }
@@ -197,9 +283,12 @@ if (headerAddress) {
 if (mapToggle && locationDropdown) {
   mapToggle.addEventListener('click', () => {
     const isOpen = locationDropdown.classList.toggle('open');
-    locationDropdown.setAttribute('aria-hidden', String(!isOpen));
+    mapToggle.setAttribute('aria-expanded', String(isOpen));
+    locationDropdown.toggleAttribute('hidden', !isOpen);
     if (isOpen) {
       mapSearch?.focus();
+      initDeliveryMap();
+      refreshDeliveryMapSize();
     }
   });
 }
@@ -207,7 +296,8 @@ if (mapToggle && locationDropdown) {
 if (closeLocationBtn && locationDropdown) {
   closeLocationBtn.addEventListener('click', () => {
     locationDropdown.classList.remove('open');
-    locationDropdown.setAttribute('aria-hidden', 'true');
+    locationDropdown.setAttribute('hidden', '');
+    mapToggle?.setAttribute('aria-expanded', 'false');
   });
 }
 
@@ -215,13 +305,162 @@ if (mapSearch) {
   mapSearch.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      applyLocationFromSearch();
+      searchAddressOnMap();
     }
   });
 }
 
 if (applyLocationBtn) {
   applyLocationBtn.addEventListener('click', applyLocationFromSearch);
+}
+
+function initDeliveryMap() {
+  if (!mapSurface || typeof L === 'undefined') {
+    return;
+  }
+
+  const mapContainer = document.getElementById('delivery-map');
+  if (!mapContainer) {
+    return;
+  }
+
+  if (!deliveryMapReady) {
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+    });
+
+    deliveryMap = L.map(mapContainer, {
+      zoomControl: true,
+      attributionControl: true
+    }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(deliveryMap);
+
+    deliveryMap.on('click', (event) => {
+      setMapPin(event.latlng.lat, event.latlng.lng);
+      reverseGeocode(event.latlng.lat, event.latlng.lng);
+    });
+
+    deliveryMapReady = true;
+  }
+
+  if (state.userAddress) {
+    searchAddressOnMap(state.userAddress, { quiet: true });
+  }
+}
+
+function refreshDeliveryMapSize() {
+  if (!deliveryMap) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    deliveryMap.invalidateSize();
+  });
+}
+
+function setMapPin(lat, lng) {
+  if (!deliveryMap) {
+    return;
+  }
+
+  if (deliveryMarker) {
+    deliveryMarker.setLatLng([lat, lng]);
+  } else {
+    deliveryMarker = L.marker([lat, lng]).addTo(deliveryMap);
+  }
+
+  deliveryMap.setView([lat, lng], Math.max(deliveryMap.getZoom(), 15), { animate: true });
+}
+
+async function searchAddressOnMap(query = mapSearch?.value.trim(), options = {}) {
+  const address = query || mapSearch?.value.trim();
+  if (!address) {
+    if (!options.quiet && mapLabel) {
+      mapLabel.textContent = 'Type an address first';
+    }
+    return;
+  }
+
+  if (!options.quiet && mapLabel) {
+    mapLabel.textContent = 'Searching map...';
+  }
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+
+    const results = await response.json();
+    if (!results.length) {
+      if (!options.quiet && mapLabel) {
+        mapLabel.textContent = 'Address not found on map';
+      }
+      return;
+    }
+
+    const lat = Number(results[0].lat);
+    const lng = Number(results[0].lon);
+    initDeliveryMap();
+    setMapPin(lat, lng);
+
+    if (mapSearch) {
+      mapSearch.value = results[0].display_name;
+    }
+
+    if (mapLabel) {
+      mapLabel.textContent = 'Pin placed on map';
+    }
+  } catch (error) {
+    console.error(error);
+    if (!options.quiet && mapLabel) {
+      mapLabel.textContent = 'Could not search the map';
+    }
+  }
+}
+
+async function reverseGeocode(lat, lng) {
+  if (mapLabel) {
+    mapLabel.textContent = 'Finding address...';
+  }
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (!response.ok) {
+      throw new Error('Reverse geocode failed');
+    }
+
+    const result = await response.json();
+    const address = result.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+    if (mapSearch) {
+      mapSearch.value = address;
+    }
+
+    if (mapLabel) {
+      mapLabel.textContent = 'Pin placed on map';
+    }
+  } catch (error) {
+    console.error(error);
+    if (mapLabel) {
+      mapLabel.textContent = 'Pin placed on map';
+    }
+  }
 }
 
 function applyLocationFromSearch() {
@@ -239,35 +478,19 @@ function applyLocationFromSearch() {
   render();
   mapLabel.textContent = `Address ready: ${typedAddress}`;
   locationDropdown.classList.remove('open');
-  locationDropdown.setAttribute('aria-hidden', 'true');
-}
-
-if (mapSurface) {
-  mapSurface.addEventListener('click', (event) => {
-    const rect = mapSurface.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-
-    if (mapPin) {
-      mapPin.style.left = `${Math.min(92, Math.max(8, x))}%`;
-      mapPin.style.top = `${Math.min(92, Math.max(8, y))}%`;
-    }
-
-    if (mapLabel) {
-      mapLabel.textContent = 'Pin placed on map';
-    }
-  });
+  locationDropdown.setAttribute('hidden', '');
+  mapToggle?.setAttribute('aria-expanded', 'false');
 }
 
 function openLoginModal() {
   loginModal.classList.add('open');
-  loginModal.setAttribute('aria-hidden', 'false');
+  loginModal.removeAttribute('hidden');
   loginEmail.focus();
 }
 
 function closeLoginModal() {
   loginModal.classList.remove('open');
-  loginModal.setAttribute('aria-hidden', 'true');
+  loginModal.setAttribute('hidden', '');
   loginMessage.textContent = '';
 }
 
@@ -278,7 +501,11 @@ function logoutUser() {
   localStorage.removeItem('wolt-login');
   localStorage.removeItem('wolt-user');
   localStorage.removeItem('wolt-address');
+  if (headerAddress) {
+    headerAddress.value = '';
+  }
   updateLoginUI();
+  render();
 }
 
 function formatCurrency(value) {
@@ -301,12 +528,16 @@ function addToCart(menuItemId) {
 
   if (existing) {
     existing.quantity += 1;
+    if (!existing.image) {
+      existing.image = getFoodImage(item, restaurant.image);
+    }
   } else {
     state.cart.push({
       id: item.id,
       restaurantId: restaurant.id,
       name: item.name,
       price: item.price,
+      image: getFoodImage(item, restaurant.image),
       quantity: 1
     });
   }
@@ -316,14 +547,24 @@ function addToCart(menuItemId) {
   render();
 }
 
-function updateQty(itemKey, delta) {
-  const match = state.cart.find((entry) => entry.id === Number(itemKey));
+function updateQty(itemKey, delta, restaurantId) {
+  const match = state.cart.find((entry) => {
+    if (restaurantId != null && entry.restaurantId != null) {
+      return entry.id === Number(itemKey) && entry.restaurantId === Number(restaurantId);
+    }
+    return entry.id === Number(itemKey);
+  });
   if (!match) return;
 
   match.quantity += delta;
 
   if (match.quantity <= 0) {
-    state.cart = state.cart.filter((entry) => entry.id !== Number(itemKey));
+    state.cart = state.cart.filter((entry) => {
+      if (restaurantId != null && entry.restaurantId != null) {
+        return !(entry.id === Number(itemKey) && entry.restaurantId === Number(restaurantId));
+      }
+      return entry.id !== Number(itemKey);
+    });
   }
 
   saveCart();
@@ -335,6 +576,39 @@ function getCurrentRestaurant() {
   const params = new URLSearchParams(window.location.search);
   const restaurantId = Number(params.get('id'));
   return state.restaurants.find((restaurant) => restaurant.id === restaurantId);
+}
+
+function updateSpotlightArrows() {
+  const viewport = document.getElementById('spotlight-viewport');
+  const prev = document.querySelector('.spotlight-prev');
+  const next = document.querySelector('.spotlight-next');
+
+  if (!viewport || !prev || !next) {
+    return;
+  }
+
+  const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+  prev.disabled = viewport.scrollLeft <= 4;
+  next.disabled = viewport.scrollLeft >= maxScroll - 4;
+}
+
+function initSpotlightCarousel() {
+  const viewport = document.getElementById('spotlight-viewport');
+  if (!viewport) {
+    return;
+  }
+
+  if (viewport.dataset.bound !== 'true') {
+    viewport.dataset.bound = 'true';
+    viewport.addEventListener('scroll', updateSpotlightArrows, { passive: true });
+  }
+
+  updateSpotlightArrows();
+
+  if (!spotlightResizeBound) {
+    window.addEventListener('resize', updateSpotlightArrows);
+    spotlightResizeBound = true;
+  }
 }
 
 function render() {
@@ -366,7 +640,7 @@ function renderSpotlightCarousel() {
           <div class="spotlight-track" id="spotlight-track">
             ${SPOTLIGHT_SLIDES.map((slide) => `
               <a class="spotlight-slide" href="${slide.href}">
-                <img src="${slide.image}" alt="${slide.title}" loading="lazy" />
+                ${foodImageTag(slide, slide.title)}
                 <div class="spotlight-slide-copy">
                   <span class="spotlight-tag">${slide.tag}</span>
                   <strong>${slide.title}</strong>
@@ -382,61 +656,6 @@ function renderSpotlightCarousel() {
   `;
 }
 
-function initSpotlightCarousel() {
-  const viewport = document.getElementById('spotlight-viewport');
-  const track = document.getElementById('spotlight-track');
-  const prev = document.querySelector('.spotlight-prev');
-  const next = document.querySelector('.spotlight-next');
-
-  if (!viewport || !track || !prev || !next) {
-    return;
-  }
-
-  const scrollStep = () => {
-    const slide = track.querySelector('.spotlight-slide');
-    if (!slide) {
-      return 300;
-    }
-
-    const styles = getComputedStyle(track);
-    const gap = parseFloat(styles.columnGap || styles.gap) || 14;
-    return slide.offsetWidth + gap;
-  };
-
-  const updateArrows = () => {
-    const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-    prev.disabled = viewport.scrollLeft <= 4;
-    next.disabled = viewport.scrollLeft >= maxScroll - 4;
-  };
-
-  prev.addEventListener('click', () => {
-    viewport.scrollBy({ left: -scrollStep(), behavior: 'smooth' });
-  });
-
-  next.addEventListener('click', () => {
-    viewport.scrollBy({ left: scrollStep(), behavior: 'smooth' });
-  });
-
-  viewport.addEventListener('scroll', updateArrows, { passive: true });
-  updateArrows();
-
-  if (!window.__spotlightResizeBound) {
-    window.addEventListener('resize', () => {
-      const activeViewport = document.getElementById('spotlight-viewport');
-      const activePrev = document.querySelector('.spotlight-prev');
-      const activeNext = document.querySelector('.spotlight-next');
-      if (!activeViewport || !activePrev || !activeNext) {
-        return;
-      }
-
-      const maxScroll = activeViewport.scrollWidth - activeViewport.clientWidth;
-      activePrev.disabled = activeViewport.scrollLeft <= 4;
-      activeNext.disabled = activeViewport.scrollLeft >= maxScroll - 4;
-    });
-    window.__spotlightResizeBound = true;
-  }
-}
-
 function renderHomePage() {
   app.innerHTML = `
     ${renderSpotlightCarousel()}
@@ -444,12 +663,12 @@ function renderHomePage() {
     ${state.userAddress ? `
       <section class="panel nearby-panel">
         <p class="eyebrow">Nearest picks</p>
-        <h3>Suggested for ${state.userAddress}</h3>
+        <h3>Suggested for ${escapeHtml(state.userAddress)}</h3>
         <p class="meta">These are the closest-style picks from your saved delivery area, ready for quick ordering.</p>
         <div class="grid nearby-grid">
           ${state.restaurants.slice(0, 3).map((restaurant, index) => `
             <article class="card nearby-card">
-              <img src="${restaurant.image}" alt="${restaurant.name}" />
+              ${foodImageTag(restaurant, restaurant.name)}
               <div class="card-body">
                 <p class="meta">${restaurant.category} • ${restaurant.deliveryTime} • ⭐ ${restaurant.rating}</p>
                 <h3>${restaurant.name}</h3>
@@ -467,7 +686,7 @@ function renderHomePage() {
       <div class="grid">
         ${state.restaurants.map((restaurant) => `
           <article class="card">
-            <img src="${restaurant.image}" alt="${restaurant.name}" />
+            ${foodImageTag(restaurant, restaurant.name)}
             <div class="card-body">
               <p class="meta">${restaurant.category} • ⭐ ${restaurant.rating}</p>
               <h3>${restaurant.name}</h3>
@@ -494,14 +713,17 @@ function renderRestaurantPage() {
 
   app.innerHTML = `
     <section class="restaurant-layout">
-      <article class="panel">
-        <p class="eyebrow">Restaurant page</p>
-        <h2>${restaurant.name}</h2>
-        <p>${restaurant.description}</p>
-        <p class="meta">${restaurant.category} • ${restaurant.deliveryTime} • ⭐ ${restaurant.rating}</p>
-        <div class="btn-row">
-          <a class="ghost-btn" href="index.html">Back to home</a>
-          <a class="btn" href="index.html?page=cart">Open cart</a>
+      <article class="panel restaurant-hero">
+        ${foodImageTag(restaurant, restaurant.name, 'restaurant-hero-image')}
+        <div class="restaurant-hero-copy">
+          <p class="eyebrow">Restaurant page</p>
+          <h2>${restaurant.name}</h2>
+          <p>${restaurant.description}</p>
+          <p class="meta">${restaurant.category} • ${restaurant.deliveryTime} • ⭐ ${restaurant.rating}</p>
+          <div class="btn-row">
+            <a class="ghost-btn" href="index.html">Back to home</a>
+            <a class="btn" href="index.html?page=cart">Open cart</a>
+          </div>
         </div>
       </article>
 
@@ -510,11 +732,12 @@ function renderRestaurantPage() {
         <div class="menu-list">
           ${restaurant.menu.map((item) => `
             <article class="menu-item">
-              <div>
+              ${foodImageTag(item, item.name, 'menu-item-thumb')}
+              <div class="menu-item-copy">
                 <h4>${item.name}</h4>
                 <p>${item.description}</p>
               </div>
-              <div style="text-align:right; display:grid; gap:6px; justify-items:end;">
+              <div class="menu-item-actions">
                 <strong class="price-tag">${formatCurrency(item.price)}</strong>
                 <button class="btn" data-add-item="${item.id}">Add to cart</button>
               </div>
@@ -549,14 +772,15 @@ function renderCartPage() {
         <div class="cart-grid">
           ${state.cart.map((item) => `
             <article class="cart-card">
-              <div>
+              ${foodImageTag(item, item.name, 'cart-card-thumb')}
+              <div class="cart-card-copy">
                 <strong>${item.name}</strong>
                 <span class="meta">${formatCurrency(item.price)} each</span>
               </div>
               <div class="qty-wrap">
-                <button class="qty-btn" data-qty="${item.id}" data-delta="-1">−</button>
+                <button class="qty-btn" data-qty="${item.id}" data-restaurant="${item.restaurantId}" data-delta="-1">−</button>
                 <strong>${item.quantity}</strong>
-                <button class="qty-btn" data-qty="${item.id}" data-delta="1">+</button>
+                <button class="qty-btn" data-qty="${item.id}" data-restaurant="${item.restaurantId}" data-delta="1">+</button>
               </div>
             </article>
           `).join('')}

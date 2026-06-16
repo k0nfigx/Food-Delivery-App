@@ -1,14 +1,27 @@
 const app = document.getElementById('app');
 const cartCount = document.getElementById('cart-count');
 const loginBtn = document.getElementById('login-btn');
+const signupBtn = document.getElementById('signup-btn');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 const headerActions = document.getElementById('header-actions');
-const loginModal = document.getElementById('login-modal');
-const closeLoginBtn = document.getElementById('close-login');
+const authModal = document.getElementById('auth-modal');
+const closeAuthBtn = document.getElementById('close-auth');
+const authTabLogin = document.getElementById('auth-tab-login');
+const authTabSignup = document.getElementById('auth-tab-signup');
+const loginPane = document.getElementById('login-pane');
+const signupPane = document.getElementById('signup-pane');
+const switchToSignupBtn = document.getElementById('switch-to-signup');
+const switchToLoginBtn = document.getElementById('switch-to-login');
 const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
 const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
 const loginMessage = document.getElementById('login-message');
+const signupName = document.getElementById('signup-name');
+const signupEmail = document.getElementById('signup-email');
+const signupPassword = document.getElementById('signup-password');
+const signupConfirm = document.getElementById('signup-confirm');
+const signupMessage = document.getElementById('signup-message');
 const headerAddress = document.getElementById('header-address');
 const mapToggle = document.getElementById('map-toggle');
 const locationDropdown = document.getElementById('location-dropdown');
@@ -52,17 +65,18 @@ const SPOTLIGHT_SLIDES = [
     title: 'Smoothie Bar',
     tag: 'Smoothies',
     subtitle: 'Fresh blends & fruit bowls',
-    image: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=900&h=520&q=80',
+    image: 'images/berry-smoothie.jpg',
     href: 'index.html?page=restaurant&id=3'
   }
 ];
 
 const FOOD_IMAGE_RULES = [
-  { keywords: ['pizza', 'margherita', 'pepperoni', 'garlic bread'], image: 'https://foodish-api.com/images/pizza/pizza1.jpg' },
+  { keywords: ['garlic bread', 'garlic'], image: 'images/garlic-bread.jpg' },
+  { keywords: ['pizza', 'margherita', 'pepperoni'], image: 'https://foodish-api.com/images/pizza/pizza1.jpg' },
   { keywords: ['burger'], image: 'https://foodish-api.com/images/burger/burger1.jpg' },
-  { keywords: ['fries', 'fry'], image: 'https://foodish-api.com/images/burger/burger2.jpg' },
-  { keywords: ['milkshake', 'shake', 'dessert'], image: 'https://foodish-api.com/images/dessert/dessert1.jpg' },
-  { keywords: ['smoothie', 'berry'], image: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=600&h=400&q=80' },
+  { keywords: ['fries', 'fry'], image: 'images/loaded-fries.jpg' },
+  { keywords: ['milkshake', 'shake'], image: 'images/milkshake.jpg' },
+  { keywords: ['smoothie', 'berry'], image: 'images/berry-smoothie.jpg' },
   { keywords: ['salad', 'bowl', 'avocado', 'power'], image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80' },
   { keywords: ['healthy', 'green'], image: 'https://foodish-api.com/images/rice/rice1.jpg' }
 ];
@@ -157,11 +171,25 @@ function openLoginPanel() {
     return;
   }
 
-  openLoginModal();
+  openAuthModal('login');
+  closeMobileMenu();
+}
+
+function openSignupPanel() {
+  if (state.isLoggedIn) {
+    return;
+  }
+
+  openAuthModal('signup');
   closeMobileMenu();
 }
 
 loginBtn.addEventListener('click', openLoginPanel);
+signupBtn?.addEventListener('click', openSignupPanel);
+authTabLogin?.addEventListener('click', () => switchAuthTab('login'));
+authTabSignup?.addEventListener('click', () => switchAuthTab('signup'));
+switchToSignupBtn?.addEventListener('click', () => switchAuthTab('signup'));
+switchToLoginBtn?.addEventListener('click', () => switchAuthTab('login'));
 
 if (mobileMenuToggle && headerActions) {
   mobileMenuToggle.addEventListener('click', () => {
@@ -185,11 +213,11 @@ function closeMobileMenu() {
   }
 }
 
-closeLoginBtn.addEventListener('click', closeLoginModal);
+closeAuthBtn?.addEventListener('click', closeAuthModal);
 
-loginModal.addEventListener('click', (event) => {
-  if (event.target === loginModal) {
-    closeLoginModal();
+authModal?.addEventListener('click', (event) => {
+  if (event.target === authModal) {
+    closeAuthModal();
   }
 });
 
@@ -209,14 +237,54 @@ loginForm.addEventListener('submit', (event) => {
     return;
   }
 
-  state.isLoggedIn = true;
-  state.userName = email.split('@')[0];
-  saveLoginState();
-  updateLoginUI();
-  closeLoginModal();
-  render();
+  const registeredUser = findRegisteredUser(email);
+  if (registeredUser && registeredUser.password !== password) {
+    loginMessage.textContent = 'Incorrect password for this account.';
+    return;
+  }
+
+  signInUser(email, registeredUser?.name);
   loginForm.reset();
   loginMessage.textContent = '';
+});
+
+signupForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const name = signupName.value.trim();
+  const email = signupEmail.value.trim();
+  const password = signupPassword.value;
+  const confirmPassword = signupConfirm.value;
+
+  if (!name || !email || !password || !confirmPassword) {
+    signupMessage.textContent = 'Please fill in every field.';
+    return;
+  }
+
+  if (!email.includes('@')) {
+    signupMessage.textContent = 'Please enter a valid email address.';
+    return;
+  }
+
+  if (password.length < 6) {
+    signupMessage.textContent = 'Password must be at least 6 characters.';
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    signupMessage.textContent = 'Passwords do not match.';
+    return;
+  }
+
+  if (findRegisteredUser(email)) {
+    signupMessage.textContent = 'An account with this email already exists.';
+    return;
+  }
+
+  saveRegisteredUser({ name, email, password });
+  signInUser(email, name);
+  signupForm.reset();
+  signupMessage.textContent = '';
 });
 
 updateLoginUI();
@@ -237,6 +305,43 @@ function hydrateCartImages() {
   if (state.cart.length) {
     saveCart();
   }
+}
+
+function loadRegisteredUsers() {
+  try {
+    const users = JSON.parse(localStorage.getItem('wolt-users') || '[]');
+    return Array.isArray(users) ? users : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRegisteredUsers(users) {
+  localStorage.setItem('wolt-users', JSON.stringify(users));
+}
+
+function findRegisteredUser(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return loadRegisteredUsers().find((user) => user.email === normalizedEmail);
+}
+
+function saveRegisteredUser(user) {
+  const users = loadRegisteredUsers();
+  users.push({
+    name: user.name.trim(),
+    email: user.email.trim().toLowerCase(),
+    password: user.password
+  });
+  saveRegisteredUsers(users);
+}
+
+function signInUser(email, preferredName = '') {
+  state.isLoggedIn = true;
+  state.userName = preferredName || email.split('@')[0];
+  saveLoginState();
+  updateLoginUI();
+  closeAuthModal();
+  render();
 }
 
 function loadLoginState() {
@@ -265,9 +370,15 @@ function updateLoginUI() {
   if (state.isLoggedIn && state.userName) {
     loginBtn.textContent = `Hi, ${state.userName}`;
     loginBtn.classList.add('logged-in');
+    if (signupBtn) {
+      signupBtn.hidden = true;
+    }
   } else {
     loginBtn.textContent = 'Log in';
     loginBtn.classList.remove('logged-in');
+    if (signupBtn) {
+      signupBtn.hidden = false;
+    }
   }
 }
 
@@ -482,16 +593,46 @@ function applyLocationFromSearch() {
   mapToggle?.setAttribute('aria-expanded', 'false');
 }
 
-function openLoginModal() {
-  loginModal.classList.add('open');
-  loginModal.removeAttribute('hidden');
-  loginEmail.focus();
+function switchAuthTab(mode = 'login') {
+  const isSignup = mode === 'signup';
+
+  authTabLogin?.classList.toggle('active', !isSignup);
+  authTabSignup?.classList.toggle('active', isSignup);
+  authTabLogin?.setAttribute('aria-selected', String(!isSignup));
+  authTabSignup?.setAttribute('aria-selected', String(isSignup));
+
+  if (loginPane) {
+    loginPane.toggleAttribute('hidden', isSignup);
+  }
+  if (signupPane) {
+    signupPane.toggleAttribute('hidden', !isSignup);
+  }
+
+  loginMessage.textContent = '';
+  if (signupMessage) {
+    signupMessage.textContent = '';
+  }
+
+  if (isSignup) {
+    signupName?.focus();
+  } else {
+    loginEmail?.focus();
+  }
 }
 
-function closeLoginModal() {
-  loginModal.classList.remove('open');
-  loginModal.setAttribute('hidden', '');
+function openAuthModal(mode = 'login') {
+  authModal?.classList.add('open');
+  authModal?.removeAttribute('hidden');
+  switchAuthTab(mode);
+}
+
+function closeAuthModal() {
+  authModal?.classList.remove('open');
+  authModal?.setAttribute('hidden', '');
   loginMessage.textContent = '';
+  if (signupMessage) {
+    signupMessage.textContent = '';
+  }
 }
 
 function logoutUser() {

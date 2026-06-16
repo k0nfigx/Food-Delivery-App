@@ -10,7 +10,7 @@
     "menu": [
       { "id": 101, "name": "Margherita", "description": "Tomato sauce, mozzarella, basil.", "price": 9.9, "image": "https://foodish-api.com/images/pizza/pizza1.jpg" },
       { "id": 102, "name": "Pepperoni Supreme", "description": "Pepperoni, mozzarella, roasted peppers.", "price": 12.4, "image": "https://foodish-api.com/images/pizza/pizza2.jpg" },
-      { "id": 103, "name": "Garlic Bread", "description": "Warm bread with garlic butter and herbs.", "price": 4.5, "image": "https://foodish-api.com/images/pizza/pizza3.jpg" }
+      { "id": 103, "name": "Garlic Bread", "description": "Warm bread with garlic butter and herbs.", "price": 4.5, "image": "images/garlic-bread.jpg" }
     ]
   },
   {
@@ -23,8 +23,8 @@
     "description": "Juicy burgers, fries, and sauces made for fast comfort food.",
     "menu": [
       { "id": 201, "name": "Classic Burger", "description": "Beef patty, lettuce, tomato, cheddar.", "price": 8.9, "image": "https://foodish-api.com/images/burger/burger1.jpg" },
-      { "id": 202, "name": "Loaded Fries", "description": "Crispy fries with cheese and jalapeños.", "price": 5.6, "image": "https://foodish-api.com/images/burger/burger2.jpg" },
-      { "id": 203, "name": "Milkshake", "description": "Vanilla, chocolate, or strawberry.", "price": 4.2, "image": "https://foodish-api.com/images/dessert/dessert1.jpg" }
+      { "id": 202, "name": "Loaded Fries", "description": "Crispy fries with cheese and jalapeños.", "price": 5.6, "image": "images/loaded-fries.jpg" },
+      { "id": 203, "name": "Milkshake", "description": "Vanilla, chocolate, or strawberry.", "price": 4.2, "image": "images/milkshake.jpg" }
     ]
   },
   {
@@ -38,7 +38,7 @@
     "menu": [
       { "id": 301, "name": "Avocado Bowl", "description": "Quinoa, avocado, greens, and citrus dressing.", "price": 10.2, "image": "https://foodish-api.com/images/rice/rice1.jpg" },
       { "id": 302, "name": "Power Salad", "description": "Chicken, chickpeas, seeds, and feta.", "price": 11.8, "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80" },
-      { "id": 303, "name": "Berry Smoothie", "description": "Blueberry, banana, and yogurt blend.", "price": 4.9, "image": "https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=600&h=400&q=80" }
+      { "id": 303, "name": "Berry Smoothie", "description": "Blueberry, banana, and yogurt blend.", "price": 4.9, "image": "images/berry-smoothie.jpg" }
     ]
   }
 ]

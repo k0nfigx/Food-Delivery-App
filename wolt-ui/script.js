@@ -22,6 +22,10 @@ const signupEmail = document.getElementById('signup-email');
 const signupPassword = document.getElementById('signup-password');
 const signupConfirm = document.getElementById('signup-confirm');
 const signupMessage = document.getElementById('signup-message');
+const orderSuccessModal = document.getElementById('order-success-modal');
+const cartToast = document.getElementById('cart-toast');
+const cartToastTitle = document.getElementById('cart-toast-title');
+const cartToastMeta = document.getElementById('cart-toast-meta');
 const headerAddress = document.getElementById('header-address');
 const mapToggle = document.getElementById('map-toggle');
 const locationDropdown = document.getElementById('location-dropdown');
@@ -32,6 +36,8 @@ const mapLabel = document.getElementById('map-label');
 const applyLocationBtn = document.getElementById('apply-location');
 
 let spotlightResizeBound = false;
+let orderSuccessTimer = null;
+let cartToastTimer = null;
 let deliveryMap = null;
 let deliveryMarker = null;
 let deliveryMapReady = false;
@@ -162,6 +168,12 @@ app.addEventListener('click', (event) => {
       Number(qtyButton.dataset.delta),
       qtyButton.dataset.restaurant
     );
+    return;
+  }
+
+  const checkoutButton = event.target.closest('[data-checkout]');
+  if (checkoutButton) {
+    submitOrder();
   }
 });
 
@@ -658,6 +670,44 @@ function updateCartBadge() {
   cartCount.textContent = totalItems;
 }
 
+function showCartToast(itemName) {
+  if (!cartToast || !cartToastTitle || !cartToastMeta) {
+    return;
+  }
+
+  const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  cartToastTitle.textContent = `${itemName} added to cart`;
+  cartToastMeta.textContent = totalItems === 1
+    ? '1 item in your cart'
+    : `${totalItems} items in your cart`;
+
+  if (cartToastTimer) {
+    clearTimeout(cartToastTimer);
+  }
+
+  cartToast.classList.add('open');
+  cartToast.removeAttribute('hidden');
+
+  cartToastTimer = window.setTimeout(() => {
+    cartToastTimer = null;
+    hideCartToast();
+  }, 2800);
+}
+
+function hideCartToast() {
+  if (!cartToast) {
+    return;
+  }
+
+  cartToast.classList.remove('open');
+  window.setTimeout(() => {
+    if (!cartToast.classList.contains('open')) {
+      cartToast.setAttribute('hidden', '');
+    }
+  }, 220);
+}
+
 function addToCart(menuItemId) {
   const restaurant = getCurrentRestaurant();
   if (!restaurant) return;
@@ -685,6 +735,7 @@ function addToCart(menuItemId) {
 
   saveCart();
   updateCartBadge();
+  showCartToast(item.name);
   render();
 }
 
@@ -758,6 +809,8 @@ function render() {
 
   if (page === 'cart') {
     renderCartPage();
+  } else if (page === 'order-confirmed') {
+    renderOrderConfirmationPage();
   } else if (page === 'restaurant') {
     renderRestaurantPage();
   } else {
@@ -933,7 +986,149 @@ function renderCartPage() {
         <p>Subtotal: ${formatCurrency(total)}</p>
         <p>Delivery: ${formatCurrency(3.5)}</p>
         <p>Total: ${formatCurrency(total + 3.5)}</p>
-        <button class="btn" type="button">Checkout</button>
+        <button class="btn" type="button" data-checkout>Checkout</button>
+      </aside>
+    </section>
+  `;
+}
+
+function getRestaurantName(restaurantId) {
+  const restaurant = state.restaurants.find((entry) => entry.id === Number(restaurantId));
+  return restaurant?.name || 'Restaurant';
+}
+
+function loadLastOrder() {
+  try {
+    return JSON.parse(sessionStorage.getItem('wolt-last-order') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function saveLastOrder(order) {
+  sessionStorage.setItem('wolt-last-order', JSON.stringify(order));
+}
+
+function submitOrder() {
+  if (!state.cart.length) {
+    return;
+  }
+
+  const subtotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryFee = 3.5;
+  const restaurantNames = [...new Set(state.cart.map((item) => getRestaurantName(item.restaurantId)))];
+
+  const order = {
+    id: `FR-${Date.now().toString().slice(-6)}`,
+    items: state.cart.map((item) => ({ ...item })),
+    subtotal,
+    deliveryFee,
+    total: subtotal + deliveryFee,
+    restaurants: restaurantNames,
+    submittedAt: new Date().toISOString()
+  };
+
+  saveLastOrder(order);
+  state.cart = [];
+  saveCart();
+  updateCartBadge();
+
+  showOrderSuccessPopup(() => {
+    window.history.pushState({}, '', 'index.html?page=order-confirmed');
+    renderOrderConfirmationPage(order);
+  });
+}
+
+function showOrderSuccessPopup(onComplete) {
+  if (!orderSuccessModal) {
+    onComplete?.();
+    return;
+  }
+
+  if (orderSuccessTimer) {
+    clearTimeout(orderSuccessTimer);
+  }
+
+  orderSuccessModal.classList.add('open');
+  orderSuccessModal.removeAttribute('hidden');
+
+  orderSuccessTimer = window.setTimeout(() => {
+    orderSuccessTimer = null;
+    hideOrderSuccessPopup();
+    onComplete?.();
+  }, 1800);
+}
+
+function hideOrderSuccessPopup() {
+  if (!orderSuccessModal) {
+    return;
+  }
+
+  orderSuccessModal.classList.remove('open');
+  orderSuccessModal.setAttribute('hidden', '');
+}
+
+function renderOrderConfirmationPage(order = loadLastOrder()) {
+  if (!order?.items?.length) {
+    app.innerHTML = `
+      <section class="empty-state">
+        <p class="eyebrow">Orders</p>
+        <h2>No recent order found.</h2>
+        <p>Place an order from your cart to see its status here.</p>
+        <a class="btn" href="index.html">Browse restaurants</a>
+      </section>
+    `;
+    return;
+  }
+
+  const storeLabel = order.restaurants.length === 1
+    ? order.restaurants[0]
+    : `${order.restaurants.length} restaurants`;
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  app.innerHTML = `
+    <section class="order-confirmation">
+      <article class="panel order-confirmation-hero">
+        <p class="eyebrow">Track your order</p>
+        <h2>Thanks! ${storeLabel} is on it.</h2>
+        <p class="order-confirmation-copy">
+          Your order has been sent to the store. They are reviewing it now and starting to prepare your food.
+        </p>
+        <div class="order-meta-row">
+          <span class="badge">Order ${order.id}</span>
+          <span class="meta">${itemCount} item${itemCount === 1 ? '' : 's'} • ${formatCurrency(order.total)}</span>
+        </div>
+      </article>
+
+      <aside class="panel order-status-panel">
+        <h3>Order status</h3>
+        <ol class="order-status-list">
+          <li class="order-status-step done">
+            <span class="order-status-dot" aria-hidden="true"></span>
+            <div>
+              <strong>Order received</strong>
+              <p>The store has your order and is looking at it now.</p>
+            </div>
+          </li>
+          <li class="order-status-step active">
+            <span class="order-status-dot" aria-hidden="true"></span>
+            <div>
+              <strong>Processing</strong>
+              <p>${storeLabel} is starting to prepare your items.</p>
+            </div>
+          </li>
+          <li class="order-status-step upcoming">
+            <span class="order-status-dot" aria-hidden="true"></span>
+            <div>
+              <strong>On the way</strong>
+              <p>We will update you when a courier picks it up.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="btn-row">
+          <a class="btn" href="index.html">Back to home</a>
+          <a class="ghost-btn" href="index.html?page=cart">Order again</a>
+        </div>
       </aside>
     </section>
   `;

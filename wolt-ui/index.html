@@ -120,6 +120,23 @@
     </section>
   </div>
 
+  <div id="cart-toast" class="cart-toast" hidden aria-live="polite">
+    <span class="cart-toast-icon" aria-hidden="true">✓</span>
+    <div class="cart-toast-copy">
+      <strong id="cart-toast-title">Added to cart</strong>
+      <span id="cart-toast-meta">Your cart was updated</span>
+    </div>
+    <a id="cart-toast-link" class="cart-toast-link" href="index.html?page=cart">View cart</a>
+  </div>
+
+  <div id="order-success-modal" class="order-success-modal" hidden aria-live="polite">
+    <div class="order-success-card" role="status">
+      <div class="order-success-icon" aria-hidden="true">✓</div>
+      <h2>Order placed</h2>
+      <p>Taking you to your order status...</p>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
 </body>

@@ -2,27 +2,27 @@
   {
     "id": 1,
     "name": "Pizza Place",
-    "image": "https://foodish-api.com/images/pizza/pizza1.jpg",
+    "image": "images/pizza-hero.jpg",
     "category": "Pizza",
     "rating": 4.5,
     "deliveryTime": "25–35 min",
     "description": "Hand-tossed pizzas, cheesy sides, and fresh toppings for quick delivery.",
     "menu": [
-      { "id": 101, "name": "Margherita", "description": "Tomato sauce, mozzarella, basil.", "price": 9.9, "image": "https://foodish-api.com/images/pizza/pizza1.jpg" },
-      { "id": 102, "name": "Pepperoni Supreme", "description": "Pepperoni, mozzarella, roasted peppers.", "price": 12.4, "image": "https://foodish-api.com/images/pizza/pizza2.jpg" },
+      { "id": 101, "name": "Margherita", "description": "Tomato sauce, mozzarella, basil.", "price": 9.9, "image": "images/margherita.jpg" },
+      { "id": 102, "name": "Pepperoni Supreme", "description": "Pepperoni, mozzarella, roasted peppers.", "price": 12.4, "image": "images/pepperoni-pizza.jpg" },
       { "id": 103, "name": "Garlic Bread", "description": "Warm bread with garlic butter and herbs.", "price": 4.5, "image": "images/garlic-bread.jpg" }
     ]
   },
   {
     "id": 2,
     "name": "Burger House",
-    "image": "https://foodish-api.com/images/burger/burger1.jpg",
+    "image": "images/burger-hero.jpg",
     "category": "Burgers",
     "rating": 4.2,
     "deliveryTime": "20–30 min",
     "description": "Juicy burgers, fries, and sauces made for fast comfort food.",
     "menu": [
-      { "id": 201, "name": "Classic Burger", "description": "Beef patty, lettuce, tomato, cheddar.", "price": 8.9, "image": "https://foodish-api.com/images/burger/burger1.jpg" },
+      { "id": 201, "name": "Classic Burger", "description": "Beef patty, lettuce, tomato, cheddar.", "price": 8.9, "image": "images/classic-burger.jpg" },
       { "id": 202, "name": "Loaded Fries", "description": "Crispy fries with cheese and jalapeños.", "price": 5.6, "image": "images/loaded-fries.jpg" },
       { "id": 203, "name": "Milkshake", "description": "Vanilla, chocolate, or strawberry.", "price": 4.2, "image": "images/milkshake.jpg" }
     ]
@@ -30,14 +30,14 @@
   {
     "id": 3,
     "name": "Green Bowl",
-    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80",
+    "image": "images/green-bowl.jpg",
     "category": "Healthy",
     "rating": 4.8,
     "deliveryTime": "15–25 min",
     "description": "Fresh salads, grain bowls, and light meals for a balanced pick-me-up.",
     "menu": [
-      { "id": 301, "name": "Avocado Bowl", "description": "Quinoa, avocado, greens, and citrus dressing.", "price": 10.2, "image": "https://foodish-api.com/images/rice/rice1.jpg" },
-      { "id": 302, "name": "Power Salad", "description": "Chicken, chickpeas, seeds, and feta.", "price": 11.8, "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80" },
+      { "id": 301, "name": "Avocado Bowl", "description": "Quinoa, avocado, greens, and citrus dressing.", "price": 10.2, "image": "images/avocado-bowl.jpg" },
+      { "id": 302, "name": "Power Salad", "description": "Chicken, chickpeas, seeds, and feta.", "price": 11.8, "image": "images/power-salad.jpg" },
       { "id": 303, "name": "Berry Smoothie", "description": "Blueberry, banana, and yogurt blend.", "price": 4.9, "image": "images/berry-smoothie.jpg" }
     ]
   }

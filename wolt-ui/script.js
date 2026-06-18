@@ -57,14 +57,14 @@ const SPOTLIGHT_SLIDES = [
     title: 'Pizza Place',
     tag: 'Pizza',
     subtitle: 'Classic slices & wood-fired pies',
-    image: 'https://foodish-api.com/images/pizza/pizza1.jpg',
+    image: 'images/pizza-hero.jpg',
     href: 'index.html?page=restaurant&id=1'
   },
   {
     title: 'Burger House',
     tag: 'Burgers',
     subtitle: 'Smash burgers & loaded fries',
-    image: 'https://foodish-api.com/images/burger/burger1.jpg',
+    image: 'images/burger-hero.jpg',
     href: 'index.html?page=restaurant&id=2'
   },
   {
@@ -76,15 +76,21 @@ const SPOTLIGHT_SLIDES = [
   }
 ];
 
+const DEFAULT_FOOD_IMAGE = 'images/pizza-hero.jpg';
+
 const FOOD_IMAGE_RULES = [
   { keywords: ['garlic bread', 'garlic'], image: 'images/garlic-bread.jpg' },
-  { keywords: ['pizza', 'margherita', 'pepperoni'], image: 'https://foodish-api.com/images/pizza/pizza1.jpg' },
-  { keywords: ['burger'], image: 'https://foodish-api.com/images/burger/burger1.jpg' },
+  { keywords: ['margherita'], image: 'images/margherita.jpg' },
+  { keywords: ['pepperoni'], image: 'images/pepperoni-pizza.jpg' },
+  { keywords: ['pizza'], image: 'images/pizza-hero.jpg' },
+  { keywords: ['burger', 'classic burger'], image: 'images/classic-burger.jpg' },
   { keywords: ['fries', 'fry'], image: 'images/loaded-fries.jpg' },
   { keywords: ['milkshake', 'shake'], image: 'images/milkshake.jpg' },
   { keywords: ['smoothie', 'berry'], image: 'images/berry-smoothie.jpg' },
-  { keywords: ['salad', 'bowl', 'avocado', 'power'], image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&h=400&q=80' },
-  { keywords: ['healthy', 'green'], image: 'https://foodish-api.com/images/rice/rice1.jpg' }
+  { keywords: ['avocado bowl', 'avocado'], image: 'images/avocado-bowl.jpg' },
+  { keywords: ['power salad', 'power'], image: 'images/power-salad.jpg' },
+  { keywords: ['salad'], image: 'images/power-salad.jpg' },
+  { keywords: ['healthy', 'green'], image: 'images/green-bowl.jpg' }
 ];
 
 function getFoodImage(source = {}, fallbackImage = '') {
@@ -95,13 +101,13 @@ function getFoodImage(source = {}, fallbackImage = '') {
   const text = `${source.name || ''} ${source.description || ''} ${source.category || ''}`.toLowerCase();
   const match = FOOD_IMAGE_RULES.find((rule) => rule.keywords.some((keyword) => text.includes(keyword)));
 
-  return match?.image || fallbackImage || FOOD_IMAGE_RULES[0].image;
+  return match?.image || fallbackImage || DEFAULT_FOOD_IMAGE;
 }
 
 function foodImageTag(source, label, className = '') {
   const image = getFoodImage(source, source.image);
   const classAttr = className ? ` class="${className}"` : '';
-  return `<img src="${image}" alt="${label}" loading="lazy"${classAttr} onerror="this.onerror=null;this.src='${FOOD_IMAGE_RULES[0].image}';" />`;
+  return `<img src="${image}" alt="${label}" loading="lazy"${classAttr} onerror="this.onerror=null;this.src='${DEFAULT_FOOD_IMAGE}';" />`;
 }
 
 function escapeHtml(value = '') {

@@ -1,5 +1,9 @@
 # Food Delivery App
 
+![GitHub stars](https://img.shields.io/github/stars/k0nfigx/Food-Delivery-App)
+![GitHub license](https://img.shields.io/github/license/k0nfigx/Food-Delivery-App)
+![GitHub last commit](https://img.shields.io/github/last-commit/k0nfigx/Food-Delivery-App)
+
 A modern food delivery platform
 
 ## Homepage Preview

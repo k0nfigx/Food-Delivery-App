@@ -4,7 +4,9 @@ A modern food delivery platform
 
 ## Homepage Preview
 
-<img src="wolt-ui/screenshots/homepage.png" width="100%">
+<p align="center">
+  <img src="wolt-ui/screenshots/homepage.png" width="1000">
+</p>
 
 ## Features
 

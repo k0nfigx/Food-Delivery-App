@@ -22,11 +22,11 @@ A modern food delivery platform
 
 ## Tablet View
 
-<img src="wolt-ui/screenshots/tablet-view.png" width="70%">
+<img src="wolt-ui/screenshots/tablet-view.gif" width="70%">
 
 ## Mobile View
 
-<img src="wolt-ui/screenshots/mobile-view.png" width="35%">
+<img src="wolt-ui/screenshots/mobile-view.gif" width="35%">
 
 ## Tech Stack
 - HTML

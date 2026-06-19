@@ -18,15 +18,15 @@ A modern food delivery platform
 
 ## Desktop Demo
 
-[Watch Desktop Demo](wolt-ui/screenshots/desktop-demo.mov)
+<img src="wolt-ui/screenshots/desktop-demo.gif" width="100%">
 
-## Tablet Demo
+## Tablet View
 
-[Watch Tablet Demo](wolt-ui/screenshots/tablet-demo.mov)
+<img src="wolt-ui/screenshots/tablet-view.png" width="70%">
 
-## Mobile Demo
+## Mobile View
 
-[Watch Mobile Demo](wolt-ui/screenshots/mobile-demo.mov)
+<img src="wolt-ui/screenshots/mobile-view.png" width="35%">
 
 ## Tech Stack
 - HTML
